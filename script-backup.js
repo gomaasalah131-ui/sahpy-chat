@@ -1,76 +1,4 @@
-// =========================================================
-// SAHBY CHAT PREMIUM
-// SUPABASE REALTIME VERSION
-// =========================================================
-
-const SUPABASE_URL =
-    "https://sworedmcqvumtzjqolas.supabase.co";
-
-const SUPABASE_KEY =
-    "sb_publishable_Ut39DcFOYB5INMxO2rAj2w_bKjNz0Rz";
-
-const supabaseClient =
-    window.supabase.createClient(
-        SUPABASE_URL,
-        SUPABASE_KEY
-    );
-
-
-// =========================================================
-// SUPABASE REALTIME COMPATIBILITY BRIDGE
-// =========================================================
-
-const socket = {
-
-    handlers: {},
-
-    connected: true,
-
-    id:
-        crypto.randomUUID(),
-
-    on(event, callback) {
-
-        if (!this.handlers[event]) {
-            this.handlers[event] = [];
-        }
-
-        this.handlers[event].push(callback);
-    },
-
-    emit(event, data) {
-
-        handleSocketEvent(
-            event,
-            data
-        );
-    }
-};
-
-
-function fireSocketEvent(
-    event,
-    data
-) {
-
-    const handlers =
-        socket.handlers[event] || [];
-
-    handlers.forEach(
-        callback => {
-
-            try {
-                callback(data);
-            } catch (error) {
-
-                console.error(
-                    `Event error: ${event}`,
-                    error
-                );
-            }
-        }
-    );
-}
+const socket = io();
 
 
 // =========================================================
@@ -235,12 +163,6 @@ let recording = false;
 
 let notificationPermissionAsked = false;
 
-let realtimeChannel = null;
-let presenceChannel = null;
-let typingChannel = null;
-
-let realtimeStarted = false;
-
 
 // =========================================================
 // HELPERS
@@ -266,9 +188,7 @@ function escapeHTML(value) {
 
 function initials(name) {
 
-    if (!name) {
-        return "?";
-    }
+    if (!name) return "?";
 
     const clean =
         String(name).trim();
@@ -277,7 +197,6 @@ function initials(name) {
         clean.split(/\s+/);
 
     if (parts.length >= 2) {
-
         return (
             parts[0][0] +
             parts[1][0]
@@ -292,9 +211,7 @@ function initials(name) {
 
 function formatTime(value) {
 
-    if (!value) {
-        return "";
-    }
+    if (!value) return "";
 
     const date =
         new Date(value);
@@ -349,14 +266,10 @@ function formatLastSeen(value) {
 
 function normalizeUser(user) {
 
-    if (!user) {
-        return null;
-    }
+    if (!user) return null;
 
     return {
-
-        id:
-            user.id || null,
+        id: user.id || null,
 
         username:
             user.username || "",
@@ -384,10 +297,8 @@ function normalizeUser(user) {
 
 function showLoginError(message) {
 
-    if (loginError) {
-        loginError.textContent =
-            message || "";
-    }
+    loginError.textContent =
+        message || "";
 }
 
 
@@ -427,8 +338,7 @@ function showToast(message) {
                 "div"
             );
 
-        toast.id =
-            "toast";
+        toast.id = "toast";
 
         document.body.appendChild(
             toast
@@ -447,16 +357,13 @@ function showToast(message) {
     );
 
     toast.timer =
-        setTimeout(
-            () => {
+        setTimeout(() => {
 
-                toast.classList.remove(
-                    "show"
-                );
+            toast.classList.remove(
+                "show"
+            );
 
-            },
-            2200
-        );
+        }, 2200);
 }
 
 
@@ -470,78 +377,13 @@ function getInitialsAvatar(user) {
 }
 
 
-function safeFileName(name) {
-
-    return String(name || "file")
-        .replace(
-            /[^a-zA-Z0-9._-]/g,
-            "_"
-        );
-}
-
-
-// =========================================================
-// STORAGE
-// =========================================================
-
-async function uploadToStorage(
-    file,
-    folder
-) {
-
-    const extension =
-        safeFileName(
-            file.name ||
-            "file"
-        )
-        .split(".")
-        .pop();
-
-    const fileName =
-        `${Date.now()}-${crypto.randomUUID()}.${extension}`;
-
-    const path =
-        `${folder}/${fileName}`;
-
-    const result =
-        await supabaseClient
-            .storage
-            .from("chat-media")
-            .upload(
-                path,
-                file,
-                {
-                    cacheControl: "3600",
-                    upsert: false,
-                    contentType:
-                        file.type ||
-                        "application/octet-stream"
-                }
-            );
-
-    if (result.error) {
-        throw result.error;
-    }
-
-    const publicData =
-        supabaseClient
-            .storage
-            .from("chat-media")
-            .getPublicUrl(path);
-
-    return publicData.data.publicUrl;
-}
-
-
 // =========================================================
 // AVATAR
 // =========================================================
 
 function renderMyAvatar() {
 
-    if (!currentUser) {
-        return;
-    }
+    if (!currentUser) return;
 
     if (currentUser.avatar_url) {
 
@@ -581,27 +423,16 @@ avatarInput.addEventListener(
         const file =
             avatarInput.files?.[0];
 
-        if (!file) {
-            return;
-        }
+        if (!file) return;
 
-        if (
-            !file.type.startsWith(
-                "image/"
-            )
-        ) {
+        if (!file.type.startsWith("image/")) {
 
             showToast(
                 "اختار صورة فقط"
             );
 
-            avatarInput.value =
-                "";
+            avatarInput.value = "";
 
-            return;
-        }
-
-        if (!currentUser?.id) {
             return;
         }
 
@@ -609,39 +440,49 @@ avatarInput.addEventListener(
             "جاري رفع صورة البروفايل..."
         );
 
+        const formData =
+            new FormData();
+
+        formData.append(
+            "file",
+            file
+        );
+
+        formData.append(
+            "userId",
+            currentUser.id
+        );
+
+        formData.append(
+            "type",
+            "avatar"
+        );
+
         try {
 
-            const url =
-                await uploadToStorage(
-                    file,
-                    "avatars"
+            const response =
+                await fetch(
+                    "/api/upload",
+                    {
+                        method: "POST",
+                        body: formData
+                    }
                 );
 
-            const result =
-                await supabaseClient
-                    .from("users")
-                    .update({
-                        avatar_url:
-                            url
-                    })
-                    .eq(
-                        "id",
-                        currentUser.id
-                    );
+            const data =
+                await response.json();
 
-            if (result.error) {
-                throw result.error;
+            if (!response.ok) {
+                throw new Error(
+                    data.error ||
+                    "فشل الرفع"
+                );
             }
 
             currentUser.avatar_url =
-                url;
+                data.url;
 
             renderMyAvatar();
-
-            fireSocketEvent(
-                "user:updated",
-                currentUser
-            );
 
             showToast(
                 "تم تغيير صورة البروفايل ✅"
@@ -655,124 +496,12 @@ avatarInput.addEventListener(
                 error.message ||
                 "فشل رفع الصورة"
             );
+
         }
 
-        avatarInput.value =
-            "";
+        avatarInput.value = "";
     }
 );
-
-
-// =========================================================
-// USER DATABASE
-// =========================================================
-
-async function getUserById(id) {
-
-    if (!id) {
-        return null;
-    }
-
-    const result =
-        await supabaseClient
-            .from("users")
-            .select("*")
-            .eq(
-                "id",
-                id
-            )
-            .maybeSingle();
-
-    if (result.error) {
-        throw result.error;
-    }
-
-    return result.data;
-}
-
-
-async function getUserByUsername(
-    username
-) {
-
-    const result =
-        await supabaseClient
-            .from("users")
-            .select("*")
-            .eq(
-                "username",
-                username
-            )
-            .maybeSingle();
-
-    if (result.error) {
-        throw result.error;
-    }
-
-    return result.data;
-}
-
-
-async function createOrUpdateUser(
-    username,
-    displayName
-) {
-
-    let user =
-        await getUserByUsername(
-            username
-        );
-
-    if (!user) {
-
-        const result =
-            await supabaseClient
-                .from("users")
-                .insert({
-                    username,
-                    display:
-                        displayName,
-                    last_seen:
-                        new Date().toISOString()
-                })
-                .select()
-                .single();
-
-        if (result.error) {
-            throw result.error;
-        }
-
-        user =
-            result.data;
-
-    } else {
-
-        const result =
-            await supabaseClient
-                .from("users")
-                .update({
-                    display:
-                        displayName,
-                    last_seen:
-                        new Date().toISOString()
-                })
-                .eq(
-                    "id",
-                    user.id
-                )
-                .select()
-                .single();
-
-        if (result.error) {
-            throw result.error;
-        }
-
-        user =
-            result.data;
-    }
-
-    return user;
-}
 
 
 // =========================================================
@@ -781,7 +510,7 @@ async function createOrUpdateUser(
 
 loginForm.addEventListener(
     "submit",
-    async event => {
+    event => {
 
         event.preventDefault();
 
@@ -795,20 +524,16 @@ loginForm.addEventListener(
                 .trim();
 
         if (!username) {
-
             showLoginError(
                 "اكتب الـ Username الأول"
             );
-
             return;
         }
 
         if (!displayName) {
-
             showLoginError(
                 "اكتب الاسم الظاهر"
             );
-
             return;
         }
 
@@ -822,76 +547,13 @@ loginForm.addEventListener(
 
         showLoginError("");
 
-        try {
-
-            const user =
-                await createOrUpdateUser(
-                    username,
-                    displayName
-                );
-
-            currentUser =
-                normalizeUser(
-                    user
-                );
-
-            if (!currentUser) {
-                throw new Error(
-                    "بيانات المستخدم غير صحيحة"
-                );
+        socket.emit(
+            "user:join",
+            {
+                username,
+                displayName
             }
-
-            showApp();
-
-            const adminNames = [
-                "salah",
-                "salahgomaa",
-                "salahgomaa_1192009"
-            ];
-
-            adminBtn.style.display =
-                adminNames.includes(
-                    currentUser.username
-                        .toLowerCase()
-                )
-                    ? "flex"
-                    : "none";
-
-            await startSupabaseRealtime();
-
-            fireSocketEvent(
-                "user:ready",
-                {
-                    user:
-                        currentUser
-                }
-            );
-
-            await loadConversations();
-
-            await updatePresence();
-
-        } catch (error) {
-
-            console.error(
-                "LOGIN ERROR:",
-                error
-            );
-
-            fireSocketEvent(
-                "login:error",
-                error.message ||
-                "فشل تسجيل الدخول"
-            );
-        }
-
-        loginButton.disabled =
-            false;
-
-        loginButton
-            .querySelector("span")
-            .textContent =
-            "دخول إلى الشات";
+        );
     }
 );
 
@@ -901,8 +563,10 @@ socket.on(
     () => {
 
         console.log(
-            "Supabase realtime connected"
+            "Socket connected:",
+            socket.id
         );
+
     }
 );
 
@@ -912,10 +576,10 @@ socket.on(
     () => {
 
         if (loggedIn) {
-
             chatStatus.textContent =
                 "الاتصال انقطع...";
         }
+
     }
 );
 
@@ -952,6 +616,14 @@ socket.on(
 
         showApp();
 
+        loginButton.disabled =
+            false;
+
+        loginButton
+            .querySelector("span")
+            .textContent =
+            "دخول إلى الشات";
+
         const adminNames = [
             "salah",
             "salahgomaa",
@@ -965,6 +637,10 @@ socket.on(
             )
                 ? "flex"
                 : "none";
+
+        socket.emit(
+            "conversations:list"
+        );
     }
 );
 
@@ -992,1549 +668,6 @@ socket.on(
 
 
 // =========================================================
-// REALTIME
-// =========================================================
-
-async function startSupabaseRealtime() {
-
-    if (realtimeStarted) {
-        return;
-    }
-
-    realtimeStarted = true;
-
-    realtimeChannel =
-        supabaseClient
-            .channel(
-                "sahby-messages",
-                {
-                    config: {
-                        broadcast: {
-                            self: false
-                        }
-                    }
-                }
-            )
-            .on(
-                "postgres_changes",
-                {
-                    event: "INSERT",
-                    schema: "public",
-                    table: "messages"
-                },
-                payload => {
-
-                    handleRealtimeMessage(
-                        payload.new
-                    );
-                }
-            )
-            .on(
-                "postgres_changes",
-                {
-                    event: "UPDATE",
-                    schema: "public",
-                    table: "messages"
-                },
-                payload => {
-
-                    handleRealtimeMessageUpdate(
-                        payload.new
-                    );
-                }
-            )
-            .subscribe();
-
-
-    presenceChannel =
-        supabaseClient
-            .channel(
-                "sahby-online-users",
-                {
-                    config: {
-                        presence: {
-                            key:
-                                currentUser?.id ||
-                                crypto.randomUUID()
-                        }
-                    }
-                }
-            );
-
-
-    presenceChannel.on(
-        "presence",
-        {
-            event: "sync"
-        },
-        () => {
-
-            updatePresenceUsers();
-        }
-    );
-
-
-    presenceChannel.on(
-        "presence",
-        {
-            event: "join"
-        },
-        () => {
-
-            updatePresenceUsers();
-        }
-    );
-
-
-    presenceChannel.on(
-        "presence",
-        {
-            event: "leave"
-        },
-        () => {
-
-            updatePresenceUsers();
-        }
-    );
-
-
-    await presenceChannel.subscribe(
-        async status => {
-
-            if (
-                status ===
-                "SUBSCRIBED"
-            ) {
-
-                await updatePresence();
-            }
-        }
-    );
-
-
-    typingChannel =
-        supabaseClient
-            .channel(
-                "sahby-typing"
-            );
-
-
-    typingChannel.on(
-        "broadcast",
-        {
-            event:
-                "typing"
-        },
-        payload => {
-
-            const data =
-                payload.payload;
-
-            if (
-                String(
-                    data?.senderId
-                ) !==
-                String(
-                    currentFriend?.id
-                )
-            ) {
-                return;
-            }
-
-            if (data.typing) {
-
-                typing.textContent =
-                    "بيكتب دلوقتي...";
-
-            } else {
-
-                typing.textContent =
-                    "";
-            }
-        }
-    );
-
-
-    await typingChannel.subscribe();
-
-
-    console.log(
-        "🔥 Supabase Realtime started"
-    );
-}
-
-
-async function updatePresence() {
-
-    if (
-        !presenceChannel ||
-        !currentUser
-    ) {
-        return;
-    }
-
-    try {
-
-        await presenceChannel.track({
-            userId:
-                currentUser.id,
-
-            username:
-                currentUser.username,
-
-            display:
-                currentUser.display,
-
-            avatar_url:
-                currentUser.avatar_url,
-
-            online:
-                true,
-
-            at:
-                new Date().toISOString()
-        });
-
-    } catch (error) {
-
-        console.error(
-            "Presence error:",
-            error
-        );
-    }
-}
-
-
-function updatePresenceUsers() {
-
-    if (!presenceChannel) {
-        return;
-    }
-
-    const state =
-        presenceChannel.presenceState();
-
-    const users = [];
-
-    Object.entries(state)
-        .forEach(
-            ([key, entries]) => {
-
-                const latest =
-                    entries?.[
-                        entries.length - 1
-                    ];
-
-                if (!latest) {
-                    return;
-                }
-
-                users.push({
-                    id:
-                        latest.userId ||
-                        key,
-
-                    username:
-                        latest.username ||
-                        "",
-
-                    display:
-                        latest.display ||
-                        latest.username ||
-                        "",
-
-                    avatar_url:
-                        latest.avatar_url ||
-                        "",
-
-                    online:
-                        true
-                });
-            }
-        );
-
-    onlineUsers =
-        users;
-
-    fireSocketEvent(
-        "users:online",
-        onlineUsers
-    );
-
-    fireSocketEvent(
-        "online:count",
-        onlineUsers.length
-    );
-
-    updateOnlineUI();
-}
-
-
-// =========================================================
-// REALTIME MESSAGE HANDLING
-// =========================================================
-
-async function enrichMessage(
-    message
-) {
-
-    if (!message) {
-        return null;
-    }
-
-    let result =
-        {
-            ...message
-        };
-
-    try {
-
-        if (message.sender_id) {
-
-            const sender =
-                await getUserById(
-                    message.sender_id
-                );
-
-            if (sender) {
-
-                result.sender_user =
-                    sender;
-
-                result.sender_name =
-                    sender.display ||
-                    sender.username;
-            }
-        }
-
-        if (message.receiver_id) {
-
-            const receiver =
-                await getUserById(
-                    message.receiver_id
-                );
-
-            if (receiver) {
-
-                result.receiver_user =
-                    receiver;
-            }
-        }
-
-    } catch (error) {
-
-        console.error(
-            "Message user lookup:",
-            error
-        );
-    }
-
-    return result;
-}
-
-
-async function handleRealtimeMessage(
-    message
-) {
-
-    const enriched =
-        await enrichMessage(
-            message
-        );
-
-    if (!enriched) {
-        return;
-    }
-
-    fireSocketEvent(
-        "message:new",
-        enriched
-    );
-
-    if (
-        String(
-            message.sender_id
-        ) ===
-        String(
-            currentUser?.id
-        )
-    ) {
-
-        fireSocketEvent(
-            "message:sent",
-            enriched
-        );
-    }
-}
-
-
-async function handleRealtimeMessageUpdate(
-    message
-) {
-
-    const enriched =
-        await enrichMessage(
-            message
-        );
-
-    if (!enriched) {
-        return;
-    }
-
-    if (
-        enriched.is_deleted
-    ) {
-
-        fireSocketEvent(
-            "message:deleted",
-            {
-                id:
-                    enriched.id
-            }
-        );
-    }
-
-
-    fireSocketEvent(
-        "message:updated",
-        enriched
-    );
-
-
-    if (
-        enriched.reactions
-    ) {
-
-        fireSocketEvent(
-            "message:reaction",
-            {
-                id:
-                    enriched.id,
-
-                reactions:
-                    enriched.reactions
-            }
-        );
-    }
-
-
-    fireSocketEvent(
-        "message:pinned",
-        {
-            id:
-                enriched.id,
-
-            is_pinned:
-                enriched.is_pinned
-        }
-    );
-}
-
-
-// =========================================================
-// DATABASE MESSAGE FUNCTIONS
-// =========================================================
-
-async function getMessages(
-    friendId
-) {
-
-    if (
-        !currentUser?.id ||
-        !friendId
-    ) {
-        return [];
-    }
-
-    const first =
-        await supabaseClient
-            .from("messages")
-            .select("*")
-            .eq(
-                "sender_id",
-                currentUser.id
-            )
-            .eq(
-                "receiver_id",
-                friendId
-            )
-            .order(
-                "created_at",
-                {
-                    ascending: true
-                }
-            );
-
-
-    const second =
-        await supabaseClient
-            .from("messages")
-            .select("*")
-            .eq(
-                "sender_id",
-                friendId
-            )
-            .eq(
-                "receiver_id",
-                currentUser.id
-            )
-            .order(
-                "created_at",
-                {
-                    ascending: true
-                }
-            );
-
-
-    if (first.error) {
-        throw first.error;
-    }
-
-    if (second.error) {
-        throw second.error;
-    }
-
-
-    const all =
-        [
-            ...(first.data || []),
-            ...(second.data || [])
-        ];
-
-
-    all.sort(
-        (a, b) =>
-            new Date(
-                a.created_at
-            ) -
-            new Date(
-                b.created_at
-            )
-    );
-
-
-    const enriched =
-        await Promise.all(
-            all.map(
-                message =>
-                    enrichMessage(
-                        message
-                    )
-            )
-        );
-
-
-    return enriched;
-}
-
-
-async function getConversations() {
-
-    if (!currentUser?.id) {
-        return [];
-    }
-
-
-    const first =
-        await supabaseClient
-            .from("messages")
-            .select("*")
-            .eq(
-                "sender_id",
-                currentUser.id
-            )
-            .order(
-                "created_at",
-                {
-                    ascending: false
-                }
-            );
-
-
-    const second =
-        await supabaseClient
-            .from("messages")
-            .select("*")
-            .eq(
-                "receiver_id",
-                currentUser.id
-            )
-            .order(
-                "created_at",
-                {
-                    ascending: false
-                }
-            );
-
-
-    if (first.error) {
-        throw first.error;
-    }
-
-    if (second.error) {
-        throw second.error;
-    }
-
-
-    const all =
-        [
-            ...(first.data || []),
-            ...(second.data || [])
-        ];
-
-
-    all.sort(
-        (a, b) =>
-            new Date(
-                b.created_at
-            ) -
-            new Date(
-                a.created_at
-            )
-    );
-
-
-    const map =
-        new Map();
-
-
-    for (
-        const message
-        of all
-    ) {
-
-        const otherId =
-            String(
-                message.sender_id
-            ) ===
-            String(
-                currentUser.id
-            )
-                ? message.receiver_id
-                : message.sender_id;
-
-
-        if (!otherId) {
-            continue;
-        }
-
-
-        const key =
-            String(otherId);
-
-
-        if (!map.has(key)) {
-
-            map.set(
-                key,
-                message
-            );
-        }
-    }
-
-
-    const result = [];
-
-
-    for (
-        const [
-            otherId,
-            lastMessage
-        ]
-        of map
-    ) {
-
-        try {
-
-            const user =
-                await getUserById(
-                    otherId
-                );
-
-            if (!user) {
-                continue;
-            }
-
-
-            const enriched =
-                await enrichMessage(
-                    lastMessage
-                );
-
-
-            let preview =
-                lastMessage.message ||
-                "";
-
-
-            if (
-                lastMessage.is_deleted
-            ) {
-                preview =
-                    "هذه الرسالة تم حذفها";
-            }
-
-
-            if (
-                lastMessage.message_type ===
-                "image"
-            ) {
-                preview =
-                    "🖼️ صورة";
-            }
-
-
-            if (
-                lastMessage.message_type ===
-                "voice"
-            ) {
-                preview =
-                    "🎤 رسالة صوتية";
-            }
-
-
-            result.push({
-
-                user:
-                    normalizeUser(
-                        user
-                    ),
-
-                lastMessage:
-                    preview,
-
-                last_message:
-                    preview,
-
-                message:
-                    preview,
-
-                created_at:
-                    lastMessage.created_at,
-
-                rawMessage:
-                    enriched
-            });
-
-
-        } catch (error) {
-
-            console.error(
-                "Conversation error:",
-                error
-            );
-        }
-    }
-
-
-    result.sort(
-        (a, b) =>
-            new Date(
-                b.created_at
-            ) -
-            new Date(
-                a.created_at
-            )
-    );
-
-
-    return result;
-}
-
-
-async function loadConversations() {
-
-    try {
-
-        const data =
-            await getConversations();
-
-        fireSocketEvent(
-            "conversations:list",
-            data
-        );
-
-    } catch (error) {
-
-        console.error(error);
-
-        showToast(
-            "فشل تحميل المحادثات"
-        );
-    }
-}
-
-
-// =========================================================
-// SOCKET EVENT BRIDGE
-// =========================================================
-
-async function handleSocketEvent(
-    event,
-    data
-) {
-
-    try {
-
-        // -------------------------------------------------
-        // USER JOIN
-        // -------------------------------------------------
-
-        if (
-            event ===
-            "user:join"
-        ) {
-
-            const username =
-                String(
-                    data?.username ||
-                    ""
-                )
-                .trim()
-                .toLowerCase();
-
-
-            const displayName =
-                String(
-                    data?.displayName ||
-                    ""
-                )
-                .trim();
-
-
-            if (!username) {
-
-                fireSocketEvent(
-                    "login:error",
-                    "Username مطلوب"
-                );
-
-                return;
-            }
-
-
-            const user =
-                await createOrUpdateUser(
-                    username,
-                    displayName ||
-                    username
-                );
-
-
-            currentUser =
-                normalizeUser(
-                    user
-                );
-
-
-            await updatePresence();
-
-
-            fireSocketEvent(
-                "user:ready",
-                {
-                    user:
-                        currentUser
-                }
-            );
-
-
-            return;
-        }
-
-
-        // -------------------------------------------------
-        // SEARCH
-        // -------------------------------------------------
-
-        if (
-            event ===
-            "users:search"
-        ) {
-
-            const query =
-                String(
-                    data || ""
-                )
-                .trim()
-                .toLowerCase();
-
-
-            if (!query) {
-
-                fireSocketEvent(
-                    "users:search:result",
-                    []
-                );
-
-                return;
-            }
-
-
-            const result =
-                await supabaseClient
-                    .from("users")
-                    .select("*")
-                    .or(
-                        `username.ilike.%${query}%,display.ilike.%${query}%`
-                    )
-                    .limit(30);
-
-
-            if (result.error) {
-                throw result.error;
-            }
-
-
-            const users =
-                (result.data || [])
-                    .filter(
-                        user =>
-                            String(
-                                user.id
-                            ) !==
-                            String(
-                                currentUser?.id
-                            )
-                    )
-                    .map(
-                        normalizeUser
-                    );
-
-
-            fireSocketEvent(
-                "users:search:result",
-                users
-            );
-
-
-            return;
-        }
-
-
-        // -------------------------------------------------
-        // CONVERSATIONS
-        // -------------------------------------------------
-
-        if (
-            event ===
-                "conversations:list" ||
-            event ===
-                "conversations:get"
-        ) {
-
-            await loadConversations();
-
-            return;
-        }
-
-
-        // -------------------------------------------------
-        // OPEN CHAT
-        // -------------------------------------------------
-
-        if (
-            event ===
-            "chat:open"
-        ) {
-
-            const receiverId =
-                data?.receiverId;
-
-
-            if (!receiverId) {
-                return;
-            }
-
-
-            const user =
-                await getUserById(
-                    receiverId
-                );
-
-
-            const chatMessages =
-                await getMessages(
-                    receiverId
-                );
-
-
-            fireSocketEvent(
-                "chat:opened",
-                {
-                    user:
-                        normalizeUser(
-                            user
-                        ),
-
-                    messages:
-                        chatMessages
-                }
-            );
-
-
-            return;
-        }
-
-
-        // -------------------------------------------------
-        // SEND TEXT
-        // -------------------------------------------------
-
-        if (
-            event ===
-            "message:send"
-        ) {
-
-            if (
-                !currentUser?.id ||
-                !data?.receiverId
-            ) {
-
-                fireSocketEvent(
-                    "message:error",
-                    "بيانات الرسالة ناقصة"
-                );
-
-                return;
-            }
-
-
-            const text =
-                String(
-                    data.message ||
-                    ""
-                ).trim();
-
-
-            if (!text) {
-                return;
-            }
-
-
-            const result =
-                await supabaseClient
-                    .from("messages")
-                    .insert({
-
-                        sender_id:
-                            currentUser.id,
-
-                        receiver_id:
-                            data.receiverId,
-
-                        message:
-                            text,
-
-                        message_type:
-                            "text",
-
-                        is_deleted:
-                            false,
-
-                        reactions:
-                            {},
-
-                        is_pinned:
-                            false
-                    })
-                    .select()
-                    .single();
-
-
-            if (result.error) {
-                throw result.error;
-            }
-
-
-            const enriched =
-                await enrichMessage(
-                    result.data
-                );
-
-
-            fireSocketEvent(
-                "message:sent",
-                enriched
-            );
-
-
-            await loadConversations();
-
-
-            return;
-        }
-
-
-        // -------------------------------------------------
-        // MEDIA
-        // -------------------------------------------------
-
-        if (
-            event ===
-            "message:media"
-        ) {
-
-            if (
-                !currentUser?.id ||
-                !data?.receiverId ||
-                !data?.mediaUrl
-            ) {
-                return;
-            }
-
-
-            const result =
-                await supabaseClient
-                    .from("messages")
-                    .insert({
-
-                        sender_id:
-                            currentUser.id,
-
-                        receiver_id:
-                            data.receiverId,
-
-                        message:
-                            null,
-
-                        message_type:
-                            data.messageType ||
-                            "image",
-
-                        media_url:
-                            data.mediaUrl,
-
-                        is_deleted:
-                            false,
-
-                        reactions:
-                            {},
-
-                        is_pinned:
-                            false
-                    })
-                    .select()
-                    .single();
-
-
-            if (result.error) {
-                throw result.error;
-            }
-
-
-            const enriched =
-                await enrichMessage(
-                    result.data
-                );
-
-
-            fireSocketEvent(
-                "message:sent",
-                enriched
-            );
-
-
-            await loadConversations();
-
-
-            return;
-        }
-
-
-        // -------------------------------------------------
-        // DELETE
-        // -------------------------------------------------
-
-        if (
-            event ===
-            "message:delete"
-        ) {
-
-            const messageId =
-                data?.messageId;
-
-
-            if (!messageId) {
-                return;
-            }
-
-
-            const result =
-                await supabaseClient
-                    .from("messages")
-                    .update({
-                        is_deleted:
-                            true,
-
-                        message:
-                            null
-                    })
-                    .eq(
-                        "id",
-                        messageId
-                    );
-
-
-            if (result.error) {
-                throw result.error;
-            }
-
-
-            fireSocketEvent(
-                "message:deleted",
-                {
-                    id:
-                        messageId
-                }
-            );
-
-
-            await loadConversations();
-
-
-            return;
-        }
-
-
-        // -------------------------------------------------
-        // REACTION
-        // -------------------------------------------------
-
-        if (
-            event ===
-            "message:react"
-        ) {
-
-            const messageId =
-                data?.messageId;
-
-            const emoji =
-                data?.emoji ||
-                "❤️";
-
-
-            if (!messageId) {
-                return;
-            }
-
-
-            const result =
-                await supabaseClient
-                    .from("messages")
-                    .select(
-                        "id,reactions"
-                    )
-                    .eq(
-                        "id",
-                        messageId
-                    )
-                    .single();
-
-
-            if (result.error) {
-                throw result.error;
-            }
-
-
-            const reactions =
-                result.data.reactions ||
-                {};
-
-
-            if (
-                !Array.isArray(
-                    reactions[emoji]
-                )
-            ) {
-
-                reactions[emoji] =
-                    [];
-            }
-
-
-            const userId =
-                String(
-                    currentUser.id
-                );
-
-
-            const index =
-                reactions[emoji]
-                    .findIndex(
-                        id =>
-                            String(id) ===
-                            userId
-                    );
-
-
-            if (index >= 0) {
-
-                reactions[emoji]
-                    .splice(
-                        index,
-                        1
-                    );
-
-            } else {
-
-                reactions[emoji]
-                    .push(
-                        currentUser.id
-                    );
-            }
-
-
-            if (
-                !reactions[emoji].length
-            ) {
-
-                delete reactions[emoji];
-            }
-
-
-            const update =
-                await supabaseClient
-                    .from("messages")
-                    .update({
-                        reactions
-                    })
-                    .eq(
-                        "id",
-                        messageId
-                    );
-
-
-            if (update.error) {
-                throw update.error;
-            }
-
-
-            fireSocketEvent(
-                "message:reaction",
-                {
-                    id:
-                        messageId,
-
-                    reactions
-                }
-            );
-
-
-            return;
-        }
-
-
-        // -------------------------------------------------
-        // PIN
-        // -------------------------------------------------
-
-        if (
-            event ===
-            "message:pin"
-        ) {
-
-            const messageId =
-                data?.messageId;
-
-
-            if (!messageId) {
-                return;
-            }
-
-
-            const result =
-                await supabaseClient
-                    .from("messages")
-                    .select(
-                        "id,is_pinned"
-                    )
-                    .eq(
-                        "id",
-                        messageId
-                    )
-                    .single();
-
-
-            if (result.error) {
-                throw result.error;
-            }
-
-
-            const newValue =
-                !Boolean(
-                    result.data.is_pinned
-                );
-
-
-            const update =
-                await supabaseClient
-                    .from("messages")
-                    .update({
-                        is_pinned:
-                            newValue
-                    })
-                    .eq(
-                        "id",
-                        messageId
-                    );
-
-
-            if (update.error) {
-                throw update.error;
-            }
-
-
-            fireSocketEvent(
-                "message:pinned",
-                {
-                    id:
-                        messageId,
-
-                    is_pinned:
-                        newValue
-                }
-            );
-
-
-            return;
-        }
-
-
-        // -------------------------------------------------
-        // TYPING
-        // -------------------------------------------------
-
-        if (
-            event ===
-                "typing:start" ||
-            event ===
-                "typing:stop"
-        ) {
-
-            if (
-                !typingChannel ||
-                !currentUser?.id
-            ) {
-                return;
-            }
-
-
-            await typingChannel.send({
-                type:
-                    "broadcast",
-
-                event:
-                    "typing",
-
-                payload: {
-
-                    senderId:
-                        currentUser.id,
-
-                    receiverId:
-                        data?.receiverId,
-
-                    typing:
-                        event ===
-                        "typing:start"
-                }
-            });
-
-
-            return;
-        }
-
-
-        // -------------------------------------------------
-        // HEARTBEAT
-        // -------------------------------------------------
-
-        if (
-            event ===
-            "user:heartbeat"
-        ) {
-
-            if (!currentUser?.id) {
-                return;
-            }
-
-
-            const result =
-                await supabaseClient
-                    .from("users")
-                    .update({
-                        last_seen:
-                            new Date()
-                                .toISOString()
-                    })
-                    .eq(
-                        "id",
-                        currentUser.id
-                    );
-
-
-            if (result.error) {
-                console.error(
-                    result.error
-                );
-            }
-
-
-            await updatePresence();
-
-
-            return;
-        }
-
-
-        // -------------------------------------------------
-        // ADMIN
-        // -------------------------------------------------
-
-        if (
-            event ===
-            "admin:get"
-        ) {
-
-            await loadAdminData();
-
-            return;
-        }
-
-
-    } catch (error) {
-
-        console.error(
-            `Event failed: ${event}`,
-            error
-        );
-
-
-        if (
-            event ===
-            "user:join"
-        ) {
-
-            fireSocketEvent(
-                "login:error",
-                error.message ||
-                "فشل تسجيل الدخول"
-            );
-
-        } else {
-
-            fireSocketEvent(
-                "message:error",
-                error.message ||
-                "حصل خطأ"
-            );
-        }
-    }
-}
-
-
-// =========================================================
 // ONLINE
 // =========================================================
 
@@ -2557,9 +690,7 @@ socket.on(
     count => {
 
         onlineCount.textContent =
-            Number(
-                count || 0
-            );
+            Number(count || 0);
 
         updateOnlineUI();
     }
@@ -2577,21 +708,21 @@ socket.on(
             return;
         }
 
-
         if (
             String(user.id) ===
             String(currentUser.id)
         ) {
 
             currentUser =
-                normalizeUser({
-                    ...currentUser,
-                    ...user
-                });
+                normalizeUser(
+                    {
+                        ...currentUser,
+                        ...user
+                    }
+                );
 
             renderMyAvatar();
         }
-
 
         if (
             currentFriend &&
@@ -2600,10 +731,12 @@ socket.on(
         ) {
 
             currentFriend =
-                normalizeUser({
-                    ...currentFriend,
-                    ...user
-                });
+                normalizeUser(
+                    {
+                        ...currentFriend,
+                        ...user
+                    }
+                );
 
             updateChatHeader();
         }
@@ -2613,18 +746,17 @@ socket.on(
 
 function isUserOnline(user) {
 
-    if (!user) {
-        return false;
-    }
-
+    if (!user) return false;
 
     const id =
-        user.id;
-
+        typeof user === "string"
+            ? null
+            : user.id;
 
     const username =
-        user.username;
-
+        typeof user === "string"
+            ? user
+            : user.username;
 
     return onlineUsers.some(
         item => {
@@ -2636,7 +768,6 @@ function isUserOnline(user) {
             ) {
                 return true;
             }
-
 
             return (
                 String(
@@ -2654,25 +785,21 @@ function isUserOnline(user) {
 function getOnlineUser(user) {
 
     return onlineUsers.find(
-        item => {
-
-            return (
-                (
-                    user?.id &&
-                    String(item.id) ===
-                    String(user.id)
-                ) ||
-                (
-                    user?.username &&
-                    String(
-                        item.username || ""
-                    ).toLowerCase() ===
-                    String(
-                        user.username
-                    ).toLowerCase()
-                )
-            );
-        }
+        item =>
+            (
+                user?.id &&
+                String(item.id) ===
+                String(user.id)
+            ) ||
+            (
+                user?.username &&
+                String(
+                    item.username || ""
+                ).toLowerCase() ===
+                String(
+                    user.username
+                ).toLowerCase()
+            )
     );
 }
 
@@ -2683,47 +810,40 @@ function updateOnlineUI() {
         .querySelectorAll(
             ".friend-item"
         )
-        .forEach(
-            item => {
+        .forEach(item => {
 
-                const id =
-                    item.dataset.userId;
+            const id =
+                item.dataset.userId;
 
-                const username =
-                    item.dataset.username;
+            const username =
+                item.dataset.username;
 
-                const online =
-                    isUserOnline({
-                        id,
-                        username
-                    });
+            const online =
+                isUserOnline({
+                    id,
+                    username
+                });
 
-                const dot =
-                    item.querySelector(
-                        ".friend-online"
-                    );
+            const dot =
+                item.querySelector(
+                    ".friend-online"
+                );
 
-                if (dot) {
-
-                    dot.style.display =
-                        online
-                            ? "block"
-                            : "none";
-                }
+            if (dot) {
+                dot.style.display =
+                    online
+                        ? "block"
+                        : "none";
             }
-        );
+        });
 
 
-    if (!currentFriend) {
-        return;
-    }
-
+    if (!currentFriend) return;
 
     const online =
         isUserOnline(
             currentFriend
         );
-
 
     chatStatus.textContent =
         online
@@ -2732,21 +852,17 @@ function updateOnlineUI() {
                 currentFriend.last_seen
             );
 
-
     chatStatus.classList.toggle(
         "online",
         online
     );
-
 
     const dot =
         document.getElementById(
             "chatOnlineDot"
         );
 
-
     if (dot) {
-
         dot.style.display =
             online
                 ? "block"
@@ -2769,10 +885,7 @@ searchInput.addEventListener(
     "keydown",
     event => {
 
-        if (
-            event.key ===
-            "Enter"
-        ) {
+        if (event.key === "Enter") {
 
             event.preventDefault();
 
@@ -2789,7 +902,6 @@ searchInput.addEventListener(
         if (
             !searchInput.value.trim()
         ) {
-
             renderConversations();
         }
     }
@@ -2801,14 +913,12 @@ function searchUsers() {
     const query =
         searchInput.value.trim();
 
-
     if (!query) {
 
         renderConversations();
 
         return;
     }
-
 
     socket.emit(
         "users:search",
@@ -2830,13 +940,9 @@ socket.on(
 );
 
 
-function renderSearchResults(
-    users
-) {
+function renderSearchResults(users) {
 
-    friendsList.innerHTML =
-        "";
-
+    friendsList.innerHTML = "";
 
     if (!users.length) {
 
@@ -2848,14 +954,11 @@ function renderSearchResults(
             </div>
         `;
 
-
         conversationCount.textContent =
             "0";
 
-
         return;
     }
-
 
     users.forEach(
         user => {
@@ -2867,7 +970,6 @@ function renderSearchResults(
             );
         }
     );
-
 
     conversationCount.textContent =
         users.length;
@@ -2883,16 +985,13 @@ socket.on(
     renderConversationData
 );
 
-
 socket.on(
     "conversations:list",
     renderConversationData
 );
 
 
-function renderConversationData(
-    data
-) {
+function renderConversationData(data) {
 
     conversations =
         Array.isArray(data)
@@ -2905,9 +1004,7 @@ function renderConversationData(
 
 function renderConversations() {
 
-    friendsList.innerHTML =
-        "";
-
+    friendsList.innerHTML = "";
 
     if (!conversations.length) {
 
@@ -2919,14 +1016,11 @@ function renderConversations() {
             </div>
         `;
 
-
         conversationCount.textContent =
             "0";
 
-
         return;
     }
-
 
     conversations.forEach(
         conversation => {
@@ -2939,11 +1033,7 @@ function renderConversations() {
                     conversation
                 );
 
-
-            if (!user) {
-                return;
-            }
-
+            if (!user) return;
 
             addFriendToList(
                 user,
@@ -2956,7 +1046,6 @@ function renderConversations() {
         }
     );
 
-
     conversationCount.textContent =
         conversations.length;
 }
@@ -2968,54 +1057,40 @@ function addFriendToList(
     activeConversation
 ) {
 
-    if (!user) {
-        return;
-    }
-
+    if (!user) return;
 
     const item =
         document.createElement(
             "div"
         );
 
-
     item.className =
         "friend-item";
-
 
     item.dataset.userId =
         user.id || "";
 
-
     item.dataset.username =
         user.username || "";
-
 
     if (
         currentFriend &&
         String(currentFriend.id) ===
         String(user.id)
     ) {
-
         item.classList.add(
             "active"
         );
     }
 
-
     const online =
-        isUserOnline(
-            user
-        );
-
+        isUserOnline(user);
 
     const avatar =
         user.avatar_url
             ? `
                 <img
-                    src="${escapeHTML(
-                        user.avatar_url
-                    )}"
+                    src="${escapeHTML(user.avatar_url)}"
                     alt=""
                 >
             `
@@ -3024,7 +1099,6 @@ function addFriendToList(
                     user.display
                 )
             );
-
 
     item.innerHTML = `
         <div class="friend-avatar">
@@ -3039,9 +1113,7 @@ function addFriendToList(
         <div class="friend-details">
 
             <span class="friend-name">
-                ${escapeHTML(
-                    user.display
-                )}
+                ${escapeHTML(user.display)}
             </span>
 
             <span class="friend-preview">
@@ -3054,33 +1126,14 @@ function addFriendToList(
         </div>
 
         <span class="friend-time">
-            ${
-                activeConversation
-                    ? formatTime(
-                        conversations.find(
-                            c =>
-                                String(
-                                    c.user?.id
-                                ) ===
-                                String(
-                                    user.id
-                                )
-                        )?.created_at
-                    ) || "الآن"
-                    : ""
-            }
+            ${activeConversation ? "الآن" : ""}
         </span>
     `;
 
-
     item.addEventListener(
         "click",
-        () =>
-            openFriend(
-                user
-            )
+        () => openFriend(user)
     );
-
 
     friendsList.appendChild(
         item
@@ -3103,37 +1156,27 @@ function openFriend(user) {
         return;
     }
 
-
     currentFriend =
-        normalizeUser(
-            user
-        );
-
+        normalizeUser(user);
 
     updateChatHeader();
-
 
     document
         .querySelectorAll(
             ".friend-item"
         )
-        .forEach(
-            item => {
+        .forEach(item => {
 
-                item.classList.toggle(
-                    "active",
-                    item.dataset.userId ===
-                    String(
-                        currentFriend.id
-                    )
-                );
-            }
-        );
+            item.classList.toggle(
+                "active",
+                item.dataset.userId ===
+                String(
+                    currentFriend.id
+                )
+            );
+        });
 
-
-    currentMessages =
-        [];
-
+    currentMessages = [];
 
     messages.innerHTML = `
         <div class="chat-welcome">
@@ -3144,7 +1187,6 @@ function openFriend(user) {
         </div>
     `;
 
-
     socket.emit(
         "chat:open",
         {
@@ -3153,11 +1195,9 @@ function openFriend(user) {
         }
     );
 
-
     app.classList.add(
         "mobile-open"
     );
-
 
     emojiPicker.classList.remove(
         "show"
@@ -3189,11 +1229,9 @@ function updateChatHeader() {
         return;
     }
 
-
     chatName.textContent =
         currentFriend.display ||
         currentFriend.username;
-
 
     const avatar =
         currentFriend.avatar_url
@@ -3212,7 +1250,6 @@ function updateChatHeader() {
                 )
             );
 
-
     chatUserAvatar.innerHTML = `
         ${avatar}
 
@@ -3221,7 +1258,6 @@ function updateChatHeader() {
             class="chat-online-dot"
         ></span>
     `;
-
 
     updateOnlineUI();
 }
@@ -3245,14 +1281,12 @@ socket.on(
             updateChatHeader();
         }
 
-
         currentMessages =
             Array.isArray(
                 data?.messages
             )
                 ? data.messages
                 : [];
-
 
         renderMessages();
     }
@@ -3265,9 +1299,7 @@ socket.on(
 
 function renderMessages() {
 
-    messages.innerHTML =
-        "";
-
+    messages.innerHTML = "";
 
     if (!currentMessages.length) {
 
@@ -3280,12 +1312,10 @@ function renderMessages() {
             </div>
         `;
 
-
         renderPinnedMessages();
 
         return;
     }
-
 
     currentMessages.forEach(
         message =>
@@ -3293,7 +1323,6 @@ function renderMessages() {
                 message
             )
     );
-
 
     renderPinnedMessages();
 
@@ -3305,15 +1334,11 @@ function renderSingleMessage(
     message
 ) {
 
-    if (!message) {
-        return;
-    }
-
+    if (!message) return;
 
     const senderId =
         message.sender_id ||
         message.senderId;
-
 
     const senderName =
         message.sender_name ||
@@ -3328,25 +1353,17 @@ function renderSingleMessage(
         ) ||
         "User";
 
-
     const mine =
         String(senderId) ===
         String(currentUser?.id);
-
 
     const row =
         document.createElement(
             "div"
         );
 
-
     row.className =
-        `message-row ${
-            mine
-                ? "mine"
-                : "theirs"
-        }`;
-
+        `message-row ${mine ? "mine" : "theirs"}`;
 
     row.dataset.messageId =
         message.id || "";
@@ -3357,7 +1374,6 @@ function renderSingleMessage(
             "div"
         );
 
-
     wrap.className =
         "message-wrap";
 
@@ -3367,14 +1383,11 @@ function renderSingleMessage(
             "div"
         );
 
-
     sender.className =
         "message-sender";
 
-
     sender.textContent =
         senderName;
-
 
     wrap.appendChild(
         sender
@@ -3388,14 +1401,11 @@ function renderSingleMessage(
                 "div"
             );
 
-
         pin.className =
             "pin-label";
 
-
         pin.textContent =
             "📌 مثبتة";
-
 
         wrap.appendChild(
             pin
@@ -3410,14 +1420,11 @@ function renderSingleMessage(
                 "div"
             );
 
-
         deleted.className =
             "deleted-message";
 
-
         deleted.textContent =
             "هذه الرسالة تم حذفها";
-
 
         wrap.appendChild(
             deleted
@@ -3430,10 +1437,11 @@ function renderSingleMessage(
                 "div"
             );
 
-
         bubble.className =
             "message-bubble";
 
+
+        /* IMAGE */
 
         if (
             message.message_type ===
@@ -3446,22 +1454,17 @@ function renderSingleMessage(
                     "img"
                 );
 
-
             image.className =
                 "message-image";
-
 
             image.src =
                 message.media_url;
 
-
             image.alt =
                 "صورة";
 
-
             image.loading =
                 "lazy";
-
 
             image.addEventListener(
                 "click",
@@ -3476,12 +1479,15 @@ function renderSingleMessage(
                 }
             );
 
-
             bubble.appendChild(
                 image
             );
+        }
 
-        } else if (
+
+        /* VOICE */
+
+        else if (
             message.message_type ===
             "voice" &&
             message.media_url
@@ -3492,10 +1498,8 @@ function renderSingleMessage(
                     "div"
                 );
 
-
             voice.className =
                 "voice-message";
-
 
             voice.innerHTML = `
                 <span class="voice-icon">🎤</span>
@@ -3509,26 +1513,26 @@ function renderSingleMessage(
                 ></audio>
             `;
 
-
             bubble.appendChild(
                 voice
             );
+        }
 
-        } else {
+
+        /* TEXT */
+
+        else {
 
             const textEl =
                 document.createElement(
                     "div"
                 );
 
-
             textEl.className =
                 "message-text";
 
-
             textEl.textContent =
                 message.message || "";
-
 
             bubble.appendChild(
                 textEl
@@ -3536,11 +1540,12 @@ function renderSingleMessage(
         }
 
 
+        /* META */
+
         const meta =
             document.createElement(
                 "div"
             );
-
 
         meta.className =
             "message-meta";
@@ -3551,46 +1556,41 @@ function renderSingleMessage(
                 "span"
             );
 
-
         time.textContent =
             formatTime(
                 message.created_at
             );
-
 
         meta.appendChild(
             time
         );
 
 
+        /* PIN */
+
         const pinBtn =
             document.createElement(
                 "button"
             );
 
-
         pinBtn.className =
             "message-tool";
-
 
         pinBtn.textContent =
             message.is_pinned
                 ? "📌"
                 : "☆";
 
-
         pinBtn.title =
             message.is_pinned
                 ? "إلغاء التثبيت"
                 : "تثبيت";
-
 
         pinBtn.addEventListener(
             "click",
             event => {
 
                 event.stopPropagation();
-
 
                 socket.emit(
                     "message:pin",
@@ -3602,36 +1602,32 @@ function renderSingleMessage(
             }
         );
 
-
         meta.appendChild(
             pinBtn
         );
 
+
+        /* REACTION */
 
         const reactionBtn =
             document.createElement(
                 "button"
             );
 
-
         reactionBtn.className =
             "message-tool";
-
 
         reactionBtn.textContent =
             "❤️";
 
-
         reactionBtn.title =
             "إضافة تفاعل";
-
 
         reactionBtn.addEventListener(
             "click",
             event => {
 
                 event.stopPropagation();
-
 
                 socket.emit(
                     "message:react",
@@ -3646,11 +1642,12 @@ function renderSingleMessage(
             }
         );
 
-
         meta.appendChild(
             reactionBtn
         );
 
+
+        /* DELETE */
 
         const canDelete =
             mine ||
@@ -3659,12 +1656,8 @@ function renderSingleMessage(
                 "salahgomaa",
                 "salahgomaa_1192009"
             ].includes(
-                String(
-                    currentUser?.username ||
-                    ""
-                ).toLowerCase()
+                currentUser?.username
             );
-
 
         if (canDelete) {
 
@@ -3673,25 +1666,20 @@ function renderSingleMessage(
                     "button"
                 );
 
-
             deleteBtn.className =
                 "message-tool delete-tool";
-
 
             deleteBtn.textContent =
                 "🗑";
 
-
             deleteBtn.title =
                 "حذف";
-
 
             deleteBtn.addEventListener(
                 "click",
                 event => {
 
                     event.stopPropagation();
-
 
                     socket.emit(
                         "message:delete",
@@ -3702,7 +1690,6 @@ function renderSingleMessage(
                     );
                 }
             );
-
 
             meta.appendChild(
                 deleteBtn
@@ -3715,16 +1702,16 @@ function renderSingleMessage(
         );
 
 
+        /* REACTIONS */
+
         const reactionBar =
             createReactionBar(
                 message
             );
 
-
         if (
             reactionBar.childNodes.length
         ) {
-
             wrap.appendChild(
                 reactionBar
             );
@@ -3741,7 +1728,6 @@ function renderSingleMessage(
         wrap
     );
 
-
     messages.appendChild(
         row
     );
@@ -3756,7 +1742,6 @@ function createReactionBar(
         document.createElement(
             "div"
         );
-
 
     bar.className =
         "reaction-bar";
@@ -3778,20 +1763,16 @@ function createReactionBar(
                 return;
             }
 
-
             const button =
                 document.createElement(
                     "button"
                 );
 
-
             button.className =
                 "reaction-chip";
 
-
             button.textContent =
                 `${emoji} ${users.length}`;
-
 
             button.addEventListener(
                 "click",
@@ -3808,7 +1789,6 @@ function createReactionBar(
                     );
                 }
             );
-
 
             bar.appendChild(
                 button
@@ -3830,11 +1810,7 @@ function sendMessage() {
     const text =
         messageInput.value.trim();
 
-
-    if (!text) {
-        return;
-    }
-
+    if (!text) return;
 
     if (!currentUser) {
 
@@ -3845,7 +1821,6 @@ function sendMessage() {
         return;
     }
 
-
     if (!currentFriend?.id) {
 
         showToast(
@@ -3854,7 +1829,6 @@ function sendMessage() {
 
         return;
     }
-
 
     socket.emit(
         "message:send",
@@ -3867,10 +1841,7 @@ function sendMessage() {
         }
     );
 
-
-    messageInput.value =
-        "";
-
+    messageInput.value = "";
 
     autoResizeTextarea();
 
@@ -3909,34 +1880,7 @@ socket.on(
     "message:sent",
     message => {
 
-        if (!message) {
-            return;
-        }
-
-
-        const belongs =
-            (
-                String(
-                    message.sender_id
-                ) ===
-                String(
-                    currentFriend?.id
-                )
-            ) ||
-            (
-                String(
-                    message.receiver_id
-                ) ===
-                String(
-                    currentFriend?.id
-                )
-            );
-
-
-        if (!belongs) {
-            return;
-        }
-
+        if (!message) return;
 
         const exists =
             currentMessages.some(
@@ -3945,24 +1889,11 @@ socket.on(
                     String(message.id)
             );
 
-
         if (!exists) {
 
             currentMessages.push(
                 message
             );
-
-
-            currentMessages.sort(
-                (a, b) =>
-                    new Date(
-                        a.created_at
-                    ) -
-                    new Date(
-                        b.created_at
-                    )
-            );
-
 
             renderMessages();
         }
@@ -3974,18 +1905,13 @@ socket.on(
     "message:new",
     message => {
 
-        if (!message) {
-            return;
-        }
-
+        if (!message) return;
 
         const senderId =
             message.sender_id;
 
-
         const receiverId =
             message.receiver_id;
-
 
         const belongs =
             (
@@ -3997,26 +1923,20 @@ socket.on(
                 String(currentFriend?.id)
             );
 
-
         if (!belongs) {
 
-            loadConversations();
+            socket.emit(
+                "conversations:list"
+            );
 
-            if (
-                String(senderId) !==
-                String(currentUser?.id)
-            ) {
+            showNotification(
+                message
+            );
 
-                showNotification(
-                    message
-                );
-
-                playNotificationSound();
-            }
+            playNotificationSound();
 
             return;
         }
-
 
         const exists =
             currentMessages.some(
@@ -4025,28 +1945,14 @@ socket.on(
                     String(message.id)
             );
 
-
         if (!exists) {
 
             currentMessages.push(
                 message
             );
 
-
-            currentMessages.sort(
-                (a, b) =>
-                    new Date(
-                        a.created_at
-                    ) -
-                    new Date(
-                        b.created_at
-                    )
-            );
-
-
             renderMessages();
         }
-
 
         if (
             String(senderId) !==
@@ -4060,8 +1966,9 @@ socket.on(
             playNotificationSound();
         }
 
-
-        loadConversations();
+        socket.emit(
+            "conversations:list"
+        );
     }
 );
 
@@ -4093,15 +2000,12 @@ socket.on(
             data?.messageId ||
             data;
 
-
         currentMessages =
             currentMessages.map(
                 message => {
 
                     if (
-                        String(
-                            message.id
-                        ) ===
+                        String(message.id) ===
                         String(id)
                     ) {
 
@@ -4116,15 +2020,15 @@ socket.on(
                         };
                     }
 
-
                     return message;
                 }
             );
 
-
         renderMessages();
 
-        loadConversations();
+        socket.emit(
+            "conversations:list"
+        );
     }
 );
 
@@ -4140,15 +2044,12 @@ socket.on(
         const id =
             data?.id;
 
-
         currentMessages =
             currentMessages.map(
                 message => {
 
                     if (
-                        String(
-                            message.id
-                        ) ===
+                        String(message.id) ===
                         String(id)
                     ) {
 
@@ -4161,11 +2062,9 @@ socket.on(
                         };
                     }
 
-
                     return message;
                 }
             );
-
 
         renderMessages();
     }
@@ -4185,9 +2084,7 @@ socket.on(
                 message => {
 
                     if (
-                        String(
-                            message.id
-                        ) ===
+                        String(message.id) ===
                         String(data?.id)
                     ) {
 
@@ -4201,55 +2098,17 @@ socket.on(
                         };
                     }
 
-
                     return message;
                 }
             );
 
-
         renderMessages();
-
 
         showToast(
             data?.is_pinned
                 ? "تم تثبيت الرسالة 📌"
                 : "تم إلغاء التثبيت"
         );
-    }
-);
-
-
-// =========================================================
-// MESSAGE UPDATED
-// =========================================================
-
-socket.on(
-    "message:updated",
-    message => {
-
-        if (!message?.id) {
-            return;
-        }
-
-
-        currentMessages =
-            currentMessages.map(
-                oldMessage =>
-                    String(
-                        oldMessage.id
-                    ) ===
-                    String(
-                        message.id
-                    )
-                        ? {
-                            ...oldMessage,
-                            ...message
-                        }
-                        : oldMessage
-            );
-
-
-        renderMessages();
     }
 );
 
@@ -4264,11 +2123,9 @@ messageInput.addEventListener(
 
         autoResizeTextarea();
 
-
         if (!currentFriend?.id) {
             return;
         }
-
 
         socket.emit(
             "typing:start",
@@ -4278,11 +2135,9 @@ messageInput.addEventListener(
             }
         );
 
-
         clearTimeout(
             typingTimer
         );
-
 
         typingTimer =
             setTimeout(
@@ -4299,11 +2154,7 @@ function stopTyping() {
         typingTimer
     );
 
-
-    if (!currentFriend?.id) {
-        return;
-    }
-
+    if (!currentFriend?.id) return;
 
     socket.emit(
         "typing:stop",
@@ -4330,7 +2181,6 @@ socket.on(
             return;
         }
 
-
         typing.textContent =
             "بيكتب دلوقتي...";
     }
@@ -4349,7 +2199,6 @@ socket.on(
                 currentFriend?.id
             )
         ) {
-
             typing.textContent =
                 "";
         }
@@ -4361,7 +2210,6 @@ function autoResizeTextarea() {
 
     messageInput.style.height =
         "auto";
-
 
     messageInput.style.height =
         Math.min(
@@ -4376,25 +2224,15 @@ function autoResizeTextarea() {
 // =========================================================
 
 const emojis = [
-
     "😀","😃","😄","😁","😆","😅","😂","🤣",
-
     "😊","😇","🙂","🙃","😉","😌","😍","🥰",
-
     "😘","😗","😙","😚","😋","😛","😝","😜",
-
     "🤪","🤨","🧐","🤓","😎","🥳","🤩","😭",
-
     "😂","🤣","😢","😡","🤬","😱","😴","🤯",
-
     "❤️","🧡","💛","💚","💙","💜","🖤","🤍",
-
     "🤎","💔","❣️","💕","💞","💓","💗","💖",
-
     "💘","💝","🔥","✨","⭐","🌟","💫","⚡",
-
     "👍","👎","👏","🙏","💪","🤝","👌","✌️",
-
     "🤌","👀","💯","🎉","🎊","🥹","🫶","😈"
 ];
 
@@ -4407,14 +2245,11 @@ emojis.forEach(
                 "button"
             );
 
-
         button.type =
             "button";
 
-
         button.textContent =
             emoji;
-
 
         button.addEventListener(
             "click",
@@ -4429,7 +2264,6 @@ emojis.forEach(
             }
         );
 
-
         emojiPicker.appendChild(
             button
         );
@@ -4443,16 +2277,13 @@ emojiBtn.addEventListener(
 
         event.stopPropagation();
 
-
         emojiPicker.classList.toggle(
             "show"
         );
 
-
         themePanel.classList.remove(
             "show"
         );
-
 
         pinnedPanel.classList.remove(
             "show"
@@ -4478,7 +2309,6 @@ attachBtn.addEventListener(
             return;
         }
 
-
         imageInput.click();
     }
 );
@@ -4491,11 +2321,7 @@ imageInput.addEventListener(
         const file =
             imageInput.files?.[0];
 
-
-        if (!file) {
-            return;
-        }
-
+        if (!file) return;
 
         if (
             !file.type.startsWith(
@@ -4507,21 +2333,17 @@ imageInput.addEventListener(
                 "اختار صورة فقط"
             );
 
-            imageInput.value =
-                "";
+            imageInput.value = "";
 
             return;
         }
-
 
         await uploadMessageMedia(
             file,
             "image"
         );
 
-
-        imageInput.value =
-            "";
+        imageInput.value = "";
     }
 );
 
@@ -4538,24 +2360,52 @@ async function uploadMessageMedia(
         return;
     }
 
-
     showToast(
         type === "image"
             ? "جاري رفع الصورة..."
             : "جاري رفع التسجيل..."
     );
 
+    const formData =
+        new FormData();
+
+    formData.append(
+        "file",
+        file,
+        file.name ||
+        `${type}.webm`
+    );
+
+    formData.append(
+        "userId",
+        currentUser.id
+    );
+
+    formData.append(
+        "type",
+        "message"
+    );
 
     try {
 
-        const url =
-            await uploadToStorage(
-                file,
-                type === "image"
-                    ? "images"
-                    : "voice"
+        const response =
+            await fetch(
+                "/api/upload",
+                {
+                    method: "POST",
+                    body: formData
+                }
             );
 
+        const data =
+            await response.json();
+
+        if (!response.ok) {
+            throw new Error(
+                data.error ||
+                "فشل رفع الملف"
+            );
+        }
 
         socket.emit(
             "message:media",
@@ -4564,18 +2414,16 @@ async function uploadMessageMedia(
                     currentFriend.id,
 
                 mediaUrl:
-                    url,
+                    data.url,
 
                 messageType:
                     type
             }
         );
 
-
     } catch (error) {
 
         console.error(error);
-
 
         showToast(
             error.message ||
@@ -4602,14 +2450,12 @@ voiceBtn.addEventListener(
             return;
         }
 
-
         if (recording) {
 
             stopRecording();
 
             return;
         }
-
 
         try {
 
@@ -4619,16 +2465,12 @@ voiceBtn.addEventListener(
                         audio: true
                     });
 
-
-            audioChunks =
-                [];
-
+            audioChunks = [];
 
             mediaRecorder =
                 new MediaRecorder(
                     stream
                 );
-
 
             mediaRecorder.ondataavailable =
                 event => {
@@ -4636,13 +2478,11 @@ voiceBtn.addEventListener(
                     if (
                         event.data.size > 0
                     ) {
-
                         audioChunks.push(
                             event.data
                         );
                     }
                 };
-
 
             mediaRecorder.onstop =
                 async () => {
@@ -4654,7 +2494,6 @@ voiceBtn.addEventListener(
                                 track.stop()
                         );
 
-
                     const blob =
                         new Blob(
                             audioChunks,
@@ -4663,7 +2502,6 @@ voiceBtn.addEventListener(
                                     "audio/webm"
                             }
                         );
-
 
                     const file =
                         new File(
@@ -4675,39 +2513,30 @@ voiceBtn.addEventListener(
                             }
                         );
 
-
                     await uploadMessageMedia(
                         file,
                         "voice"
                     );
                 };
 
-
             mediaRecorder.start();
 
-
-            recording =
-                true;
-
+            recording = true;
 
             voiceBtn.classList.add(
                 "recording"
             );
 
-
             voiceBtn.textContent =
                 "⏹";
-
 
             showToast(
                 "جاري التسجيل... دوس تاني للإيقاف"
             );
 
-
         } catch (error) {
 
             console.error(error);
-
 
             showToast(
                 "مش قادر أوصل للمايك"
@@ -4726,15 +2555,11 @@ function stopRecording() {
 
         mediaRecorder.stop();
 
-
-        recording =
-            false;
-
+        recording = false;
 
         voiceBtn.classList.remove(
             "recording"
         );
-
 
         voiceBtn.textContent =
             "🎤";
@@ -4754,10 +2579,8 @@ async function requestNotifications() {
         return;
     }
 
-
     notificationPermissionAsked =
         true;
-
 
     if (
         "Notification" in window &&
@@ -4766,9 +2589,7 @@ async function requestNotifications() {
     ) {
 
         try {
-
             await Notification.requestPermission();
-
         } catch {}
     }
 }
@@ -4780,9 +2601,7 @@ notificationBtn.addEventListener(
 );
 
 
-function showNotification(
-    message
-) {
+function showNotification(message) {
 
     if (
         !("Notification" in window)
@@ -4790,14 +2609,12 @@ function showNotification(
         return;
     }
 
-
     if (
         Notification.permission !==
         "granted"
     ) {
         return;
     }
-
 
     if (
         document.visibilityState ===
@@ -4813,36 +2630,27 @@ function showNotification(
         return;
     }
 
-
     const sender =
         message.sender_name ||
         "صاحبك";
-
 
     let body =
         message.message ||
         "";
 
-
     if (
         message.message_type ===
         "image"
     ) {
-
-        body =
-            "🖼️ بعتلك صورة";
+        body = "🖼️ بعتلك صورة";
     }
-
 
     if (
         message.message_type ===
         "voice"
     ) {
-
-        body =
-            "🎤 بعتلك رسالة صوتية";
+        body = "🎤 بعتلك رسالة صوتية";
     }
-
 
     try {
 
@@ -4850,11 +2658,8 @@ function showNotification(
             `رسالة جديدة من ${sender}`,
             {
                 body,
-
                 icon:
-                    message
-                        .sender_user
-                        ?.avatar_url ||
+                    message.sender_user?.avatar_url ||
                     undefined
             }
         );
@@ -4871,62 +2676,43 @@ function playNotificationSound() {
             window.AudioContext ||
             window.webkitAudioContext;
 
-
-        if (!AudioContext) {
-            return;
-        }
-
+        if (!AudioContext) return;
 
         const ctx =
             new AudioContext();
 
-
         const oscillator =
             ctx.createOscillator();
-
 
         const gain =
             ctx.createGain();
 
-
         oscillator.frequency.value =
             720;
 
-
         oscillator.type =
             "sine";
-
 
         gain.gain.setValueAtTime(
             0.0001,
             ctx.currentTime
         );
 
-
         gain.gain.exponentialRampToValueAtTime(
             0.08,
             ctx.currentTime + 0.01
         );
-
 
         gain.gain.exponentialRampToValueAtTime(
             0.0001,
             ctx.currentTime + 0.15
         );
 
+        oscillator.connect(gain);
 
-        oscillator.connect(
-            gain
-        );
-
-
-        gain.connect(
-            ctx.destination
-        );
-
+        gain.connect(ctx.destination);
 
         oscillator.start();
-
 
         oscillator.stop(
             ctx.currentTime + 0.16
@@ -4946,16 +2732,13 @@ themeBtn.addEventListener(
 
         event.stopPropagation();
 
-
         themePanel.classList.toggle(
             "show"
         );
 
-
         emojiPicker.classList.remove(
             "show"
         );
-
 
         pinnedPanel.classList.remove(
             "show"
@@ -4978,16 +2761,13 @@ document
                     const theme =
                         button.dataset.theme;
 
-
                     document.body.dataset.theme =
                         theme;
-
 
                     localStorage.setItem(
                         "sahby-theme",
                         theme
                     );
-
 
                     themePanel.classList.remove(
                         "show"
@@ -5003,9 +2783,7 @@ const savedTheme =
         "sahby-theme"
     );
 
-
 if (savedTheme) {
-
     document.body.dataset.theme =
         savedTheme;
 }
@@ -5021,19 +2799,15 @@ pinnedBtn.addEventListener(
 
         event.stopPropagation();
 
-
         renderPinnedMessages();
-
 
         pinnedPanel.classList.toggle(
             "show"
         );
 
-
         emojiPicker.classList.remove(
             "show"
         );
-
 
         themePanel.classList.remove(
             "show"
@@ -5044,9 +2818,7 @@ pinnedBtn.addEventListener(
 
 function renderPinnedMessages() {
 
-    pinnedList.innerHTML =
-        "";
-
+    pinnedList.innerHTML = "";
 
     const pinned =
         currentMessages.filter(
@@ -5054,7 +2826,6 @@ function renderPinnedMessages() {
                 message.is_pinned &&
                 !message.is_deleted
         );
-
 
     if (!pinned.length) {
 
@@ -5067,7 +2838,6 @@ function renderPinnedMessages() {
         return;
     }
 
-
     pinned.forEach(
         message => {
 
@@ -5076,10 +2846,8 @@ function renderPinnedMessages() {
                     "button"
                 );
 
-
             item.className =
                 "pinned-item";
-
 
             item.innerHTML = `
                 <strong>
@@ -5098,7 +2866,6 @@ function renderPinnedMessages() {
                 </span>
             `;
 
-
             item.addEventListener(
                 "click",
                 () => {
@@ -5108,25 +2875,21 @@ function renderPinnedMessages() {
                             `[data-message-id="${message.id}"]`
                         );
 
-
                     if (row) {
 
                         row.scrollIntoView({
                             behavior:
                                 "smooth",
-
                             block:
                                 "center"
                         });
                     }
-
 
                     pinnedPanel.classList.remove(
                         "show"
                     );
                 }
             );
-
 
             pinnedList.appendChild(
                 item
@@ -5148,9 +2911,7 @@ closeImageViewer.addEventListener(
             "show"
         );
 
-
-        viewerImage.src =
-            "";
+        viewerImage.src = "";
     }
 );
 
@@ -5168,9 +2929,7 @@ imageViewer.addEventListener(
                 "show"
             );
 
-
-            viewerImage.src =
-                "";
+            viewerImage.src = "";
         }
     }
 );
@@ -5202,7 +2961,6 @@ adminBtn.addEventListener(
         adminModal.classList.add(
             "show"
         );
-
 
         socket.emit(
             "admin:get"
@@ -5239,178 +2997,33 @@ adminModal.addEventListener(
 );
 
 
-async function loadAdminData() {
-
-    const adminNames = [
-        "salah",
-        "salahgomaa",
-        "salahgomaa_1192009"
-    ];
-
-
-    if (
-        !adminNames.includes(
-            String(
-                currentUser?.username ||
-                ""
-            ).toLowerCase()
-        )
-    ) {
-
-        fireSocketEvent(
-            "admin:error",
-            "مش مسموح لك"
-        );
-
-        return;
-    }
-
-
-    try {
-
-        const usersResult =
-            await supabaseClient
-                .from("users")
-                .select(
-                    "id",
-                    {
-                        count:
-                            "exact",
-                        head:
-                            true
-                    }
-                );
-
-
-        const messagesResult =
-            await supabaseClient
-                .from("messages")
-                .select(
-                    "id",
-                    {
-                        count:
-                            "exact",
-                        head:
-                            true
-                    }
-                );
-
-
-        const deletedResult =
-            await supabaseClient
-                .from("messages")
-                .select(
-                    "id",
-                    {
-                        count:
-                            "exact",
-                        head:
-                            true
-                    }
-                )
-                .eq(
-                    "is_deleted",
-                    true
-                );
-
-
-        const pinnedResult =
-            await supabaseClient
-                .from("messages")
-                .select(
-                    "id",
-                    {
-                        count:
-                            "exact",
-                        head:
-                            true
-                    }
-                )
-                .eq(
-                    "is_pinned",
-                    true
-                );
-
-
-        fireSocketEvent(
-            "admin:data",
-            {
-
-                usersCount:
-                    usersResult.count ||
-                    0,
-
-                onlineCount:
-                    onlineUsers.length,
-
-                messagesCount:
-                    messagesResult.count ||
-                    0,
-
-                deletedMessages:
-                    deletedResult.count ||
-                    0,
-
-                pinnedMessages:
-                    pinnedResult.count ||
-                    0
-            }
-        );
-
-
-    } catch (error) {
-
-        console.error(
-            "Admin error:",
-            error
-        );
-
-
-        fireSocketEvent(
-            "admin:error",
-            error.message ||
-            "حصل خطأ"
-        );
-    }
-}
-
-
 socket.on(
     "admin:data",
     data => {
 
         usersCount.textContent =
             Number(
-                data?.usersCount ||
-                0
+                data?.usersCount || 0
             );
-
 
         onlineCount.textContent =
             Number(
-                data?.onlineCount ||
-                0
+                data?.onlineCount || 0
             );
-
 
         messagesCount.textContent =
             Number(
-                data?.messagesCount ||
-                0
+                data?.messagesCount || 0
             );
-
 
         deletedMessages.textContent =
             Number(
-                data?.deletedMessages ||
-                0
+                data?.deletedMessages || 0
             );
-
 
         pinnedMessages.textContent =
             Number(
-                data?.pinnedMessages ||
-                0
+                data?.pinnedMessages || 0
             );
     }
 );
@@ -5423,8 +3036,7 @@ socket.on(
         showToast(
             typeof error === "string"
                 ? error
-                : error?.message ||
-                  "مش مسموح لك"
+                : "مش مسموح لك"
         );
     }
 );
@@ -5453,34 +3065,6 @@ setInterval(
 
 
 // =========================================================
-// BEFORE CLOSE
-// =========================================================
-
-window.addEventListener(
-    "beforeunload",
-    () => {
-
-        if (!currentUser?.id) {
-            return;
-        }
-
-
-        supabaseClient
-            .from("users")
-            .update({
-                last_seen:
-                    new Date()
-                        .toISOString()
-            })
-            .eq(
-                "id",
-                currentUser.id
-            );
-    }
-);
-
-
-// =========================================================
 // CLOSE POPUPS
 // =========================================================
 
@@ -5502,7 +3086,6 @@ document.addEventListener(
             );
         }
 
-
         if (
             !event.target.closest(
                 "#themePanel"
@@ -5516,7 +3099,6 @@ document.addEventListener(
                 "show"
             );
         }
-
 
         if (
             !event.target.closest(
@@ -5544,8 +3126,7 @@ document.addEventListener(
     event => {
 
         if (
-            event.key ===
-            "Escape"
+            event.key === "Escape"
         ) {
 
             adminModal.classList.remove(
@@ -5588,25 +3169,11 @@ function scrollMessagesToBottom() {
 }
 
 
-// =========================================================
-// INITIAL STATE
-// =========================================================
-
-if (app) {
-
-    app.classList.add(
-        "locked"
-    );
-}
-
-
 console.log(
     "%cSAHBY CHAT PREMIUM",
     "color:#b45cff;font-size:24px;font-weight:900"
 );
 
-
 console.log(
-    "%c🔥 Supabase Realtime Frontend Loaded",
-    "color:#ff4f81;font-size:16px;font-weight:800"
+    "🔥 Premium frontend loaded."
 );
