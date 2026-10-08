@@ -1,0 +1,698 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <meta
+        name="theme-color"
+        content="#05040b"
+    >
+
+    <title>Sahby Chat | Salah Gomaa</title>
+
+    <link
+        rel="stylesheet"
+        href="style.css"
+    >
+</head>
+
+<body>
+
+<!-- =====================================================
+     BACKGROUND
+===================================================== -->
+
+<div class="background-effects">
+
+    <div class="light-orb orb-purple"></div>
+    <div class="light-orb orb-red"></div>
+    <div class="light-orb orb-blue"></div>
+
+    <div class="neon-ribbon ribbon-one"></div>
+    <div class="neon-ribbon ribbon-two"></div>
+    <div class="neon-ribbon ribbon-three"></div>
+
+    <div class="grid-overlay"></div>
+
+</div>
+
+
+<!-- =====================================================
+     LOGIN
+===================================================== -->
+
+<div
+    id="loginScreen"
+    class="login-screen"
+>
+
+    <div class="login-card">
+
+        <div class="login-logo">
+            <span>💬</span>
+        </div>
+
+        <div class="premium-label">
+            PRIVATE MESSENGER
+        </div>
+
+        <h1>
+            Sahby Chat
+        </h1>
+
+        <p>
+            دردشة خاصة وسريعة مع أصحابك
+        </p>
+
+        <form id="loginForm">
+
+            <div class="input-group">
+
+                <label>
+                    Username
+                </label>
+
+                <input
+                    id="usernameInput"
+                    type="text"
+                    placeholder="مثال: salah"
+                    maxlength="40"
+                    autocomplete="username"
+                    required
+                >
+
+            </div>
+
+
+            <div class="input-group">
+
+                <label>
+                    الاسم الظاهر
+                </label>
+
+                <input
+                    id="displayInput"
+                    type="text"
+                    placeholder="مثال: Salah Gomaa"
+                    maxlength="60"
+                    autocomplete="name"
+                    required
+                >
+
+            </div>
+
+
+            <button
+                id="loginButton"
+                type="submit"
+            >
+                <span>
+                    دخول إلى الشات
+                </span>
+
+                <b>
+                    ←
+                </b>
+            </button>
+
+        </form>
+
+
+        <div
+            id="loginError"
+            class="login-error"
+        ></div>
+
+    </div>
+
+</div>
+
+
+<!-- =====================================================
+     APP
+===================================================== -->
+
+<main
+    id="app"
+    class="app locked"
+>
+
+
+<!-- =====================================================
+     SIDEBAR
+===================================================== -->
+
+<aside class="sidebar">
+
+    <div class="sidebar-top">
+
+        <div class="my-profile">
+
+            <label
+                class="my-avatar"
+                title="تغيير صورة البروفايل"
+            >
+
+                <img
+                    id="myAvatarImage"
+                    alt=""
+                >
+
+                <span
+                    id="myAvatarInitials"
+                >
+                    SG
+                </span>
+
+                <span
+                    class="online-dot"
+                ></span>
+
+                <input
+                    id="avatarInput"
+                    type="file"
+                    accept="image/*"
+                    hidden
+                >
+
+            </label>
+
+
+            <div class="my-info">
+
+                <strong
+                    id="profileName"
+                >
+                    Salah Gomaa
+                </strong>
+
+                <span>
+                    <i></i>
+                    متصل الآن
+                </span>
+
+            </div>
+
+
+            <button
+                id="adminBtn"
+                class="icon-button admin-button"
+                type="button"
+            >
+                ⚙
+            </button>
+
+        </div>
+
+
+        <div class="search-container">
+
+            <span class="search-icon">
+                ⌕
+            </span>
+
+            <input
+                id="searchInput"
+                type="text"
+                placeholder="ابحث بالـ Username..."
+                maxlength="40"
+                autocomplete="off"
+            >
+
+            <button
+                id="searchBtn"
+                type="button"
+            >
+                بحث
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <div class="sidebar-title">
+
+        <span>
+            المحادثات
+        </span>
+
+        <span
+            id="conversationCount"
+        >
+            0
+        </span>
+
+    </div>
+
+
+    <section
+        id="friendsList"
+        class="friends-list"
+    >
+
+        <div class="empty-friends">
+
+            <div class="empty-icon">
+                ✦
+            </div>
+
+            <strong>
+                مفيش محادثات لسه
+            </strong>
+
+            <span>
+                ابحث عن Username لبدء محادثة
+            </span>
+
+        </div>
+
+    </section>
+
+</aside>
+
+
+<!-- =====================================================
+     CHAT
+===================================================== -->
+
+<section class="chat">
+
+    <div class="chat-glow glow-purple"></div>
+    <div class="chat-glow glow-red"></div>
+
+
+    <!-- HEADER -->
+
+    <header class="chat-header">
+
+        <button
+            id="backBtn"
+            class="back-btn"
+            type="button"
+        >
+            ←
+        </button>
+
+
+        <div class="chat-person">
+
+            <div
+                id="chatUserAvatar"
+                class="chat-avatar"
+            >
+                ?
+
+                <span
+                    id="chatOnlineDot"
+                    class="chat-online-dot"
+                ></span>
+
+            </div>
+
+
+            <div class="chat-person-info">
+
+                <strong id="chatName">
+                    اختر محادثة
+                </strong>
+
+                <span id="chatStatus">
+                    ابدأ محادثة جديدة
+                </span>
+
+                <small id="typing"></small>
+
+            </div>
+
+        </div>
+
+
+        <div class="chat-actions">
+
+            <button
+                id="notificationBtn"
+                class="chat-action-btn"
+                type="button"
+                title="الإشعارات"
+            >
+                🔔
+            </button>
+
+
+            <button
+                id="themeBtn"
+                class="chat-action-btn"
+                type="button"
+                title="تغيير الثيم"
+            >
+                🎨
+            </button>
+
+
+            <button
+                id="pinnedBtn"
+                class="chat-action-btn"
+                type="button"
+                title="الرسائل المثبتة"
+            >
+                📌
+            </button>
+
+        </div>
+
+    </header>
+
+
+    <!-- THEME PANEL -->
+
+    <div
+        id="themePanel"
+        class="floating-panel theme-panel"
+    >
+
+        <div class="panel-title">
+            اختر شكل الشات
+        </div>
+
+        <button
+            class="theme-choice"
+            data-theme="purple"
+        >
+            <span class="theme-dot purple-dot"></span>
+            Purple Neon
+        </button>
+
+        <button
+            class="theme-choice"
+            data-theme="red"
+        >
+            <span class="theme-dot red-dot"></span>
+            Red Velvet
+        </button>
+
+        <button
+            class="theme-choice"
+            data-theme="blue"
+        >
+            <span class="theme-dot blue-dot"></span>
+            Electric Blue
+        </button>
+
+        <button
+            class="theme-choice"
+            data-theme="amoled"
+        >
+            <span class="theme-dot black-dot"></span>
+            AMOLED
+        </button>
+
+    </div>
+
+
+    <!-- PINNED PANEL -->
+
+    <div
+        id="pinnedPanel"
+        class="floating-panel pinned-panel"
+    >
+
+        <div class="panel-title">
+            📌 الرسائل المثبتة
+        </div>
+
+        <div id="pinnedList">
+            <div class="no-pinned">
+                مفيش رسائل مثبتة
+            </div>
+        </div>
+
+    </div>
+
+
+    <!-- MESSAGES -->
+
+    <section
+        id="messages"
+        class="messages"
+    >
+
+        <div class="chat-welcome">
+
+            <div class="welcome-logo">
+                ✦
+            </div>
+
+            <div class="welcome-label">
+                PRIVATE SPACE
+            </div>
+
+            <h2>
+                Sahby Chat
+            </h2>
+
+            <p>
+                اختار صاحب من القائمة وابدأ الكلام
+            </p>
+
+        </div>
+
+    </section>
+
+
+    <div
+        id="typingArea"
+        class="typing-area"
+    ></div>
+
+
+    <!-- COMPOSER -->
+
+    <footer class="composer">
+
+        <button
+            id="attachBtn"
+            class="composer-btn"
+            type="button"
+            title="إرسال صورة"
+        >
+            📎
+        </button>
+
+
+        <button
+            id="voiceBtn"
+            class="composer-btn"
+            type="button"
+            title="تسجيل رسالة صوتية"
+        >
+            🎤
+        </button>
+
+
+        <button
+            id="emojiBtn"
+            class="composer-btn"
+            type="button"
+            title="Emoji"
+        >
+            😊
+        </button>
+
+
+        <textarea
+            id="messageInput"
+            class="message-input"
+            rows="1"
+            maxlength="5000"
+            placeholder="اكتب رسالة..."
+        ></textarea>
+
+
+        <button
+            id="sendBtn"
+            class="send-btn"
+            type="button"
+        >
+            ➤
+        </button>
+
+    </footer>
+
+
+    <!-- EMOJI -->
+
+    <div
+        id="emojiPicker"
+        class="emoji-picker"
+    ></div>
+
+
+    <input
+        id="imageInput"
+        type="file"
+        accept="image/*"
+        hidden
+    >
+
+</section>
+
+</main>
+
+
+<!-- =====================================================
+     IMAGE VIEWER
+===================================================== -->
+
+<div
+    id="imageViewer"
+    class="image-viewer"
+>
+
+    <button
+        id="closeImageViewer"
+        type="button"
+    >
+        ×
+    </button>
+
+    <img
+        id="viewerImage"
+        alt=""
+    >
+
+</div>
+
+
+<!-- =====================================================
+     ADMIN
+===================================================== -->
+
+<div
+    id="adminModal"
+    class="modal"
+>
+
+    <div class="admin-card">
+
+        <div class="admin-card-header">
+
+            <div>
+
+                <span>
+                    CONTROL CENTER
+                </span>
+
+                <h2>
+                    لوحة تحكم Sahby
+                </h2>
+
+            </div>
+
+            <button
+                id="closeAdmin"
+                type="button"
+            >
+                ×
+            </button>
+
+        </div>
+
+
+        <div class="admin-grid">
+
+            <div class="admin-stat">
+
+                <span>
+                    المستخدمون
+                </span>
+
+                <strong
+                    id="usersCount"
+                >
+                    0
+                </strong>
+
+            </div>
+
+
+            <div class="admin-stat">
+
+                <span>
+                    المتصلون
+                </span>
+
+                <strong
+                    id="onlineCount"
+                >
+                    0
+                </strong>
+
+            </div>
+
+
+            <div class="admin-stat">
+
+                <span>
+                    الرسائل
+                </span>
+
+                <strong
+                    id="messagesCount"
+                >
+                    0
+                </strong>
+
+            </div>
+
+
+            <div class="admin-stat">
+
+                <span>
+                    المحذوفة
+                </span>
+
+                <strong
+                    id="deletedMessages"
+                >
+                    0
+                </strong>
+
+            </div>
+
+
+            <div class="admin-stat">
+
+                <span>
+                    المثبتة
+                </span>
+
+                <strong
+                    id="pinnedMessages"
+                >
+                    0
+                </strong>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- SOCKET -->
+
+<script src="/socket.io/socket.io.js"></script>
+
+<script src="script.js"></script>
+
+</body>
+</html>
